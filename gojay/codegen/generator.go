@@ -3,10 +3,13 @@ package codegen
 import (
 	"fmt"
 	"go/format"
+	"go/parser"
+	"go/token"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
 	"github.com/viant/toolbox"
 )
 
@@ -81,7 +84,6 @@ func (g *Generator) Generate() error {
 		}
 	}
 
-	//
 	g.Imports = strings.Join(toolbox.MapKeysToStringSlice(g.imports), "\n")
 	return g.writeCode()
 }
@@ -119,7 +121,6 @@ func (g *Generator) writeCode() error {
 	}
 
 	code, err := format.Source([]byte(expandedCode))
-
 	if err != nil {
 		return err
 	}
@@ -152,6 +153,22 @@ func (g *Generator) generateObjectArray(field *Field) error {
 		return err
 	}
 	code, err := expandBlockTemplate(structTypeSlice, field)
+	if err != nil {
+		return err
+	}
+	g.sliceTypes[field.RawComponentType] = code
+	return err
+}
+
+func (g *Generator) generateObjectMap(field *Field) error {
+	//if _, ok := g.sliceTypes[field.RawComponentType]; ok {
+	//	return nil
+	//}
+
+	if err := g.generateStructCode(field.ComponentType); err != nil {
+		return err
+	}
+	code, err := expandBlockTemplate(structTypeMap, field)
 	if err != nil {
 		return err
 	}
@@ -232,24 +249,73 @@ func (g *Generator) readPackageCode(pkgPath string) error {
 
 	var f os.FileInfo
 	if f, err = os.Stat(p); err != nil {
-		// path/to/whatever does not exist
 		return err
 	}
 
-	if !f.IsDir() {
-		g.Pkg = filepath.Dir(p)
+	g.setPackageName(p)
+
+	if f.IsDir() {
+		g.fileInfo, err = toolbox.NewFileSetInfo(p)
+	} else {
 		dir, _ := filepath.Split(p)
 		g.fileInfo, err = toolbox.NewFileSetInfo(dir)
-
-	} else {
-		g.Pkg = filepath.Base(p)
-		g.fileInfo, err = toolbox.NewFileSetInfo(p)
-	}
-
-	// if Pkg flag is set use it
-	if g.options.Pkg != "" {
-		g.Pkg = g.options.Pkg
 	}
 
 	return err
+}
+
+func (g *Generator) setPackageName(p string) error {
+	if g.options.Pkg != "" {
+		g.Pkg = g.options.Pkg
+		return nil
+	}
+
+	f, err := os.Stat(p)
+	if err != nil {
+		return err
+	}
+
+	var goFile string
+	if f.IsDir() {
+		goFile, err = getGOFile(p)
+		if err != nil {
+			return err
+		}
+	} else if isGOFile(f.Name()) {
+		goFile = p
+	} else {
+		return fmt.Errorf("no GO file found")
+	}
+
+	// parse the go source file, but only the package clause
+	astFile, err := parser.ParseFile(token.NewFileSet(), goFile, nil, parser.PackageClauseOnly)
+	if err != nil {
+		return err
+	}
+
+	if astFile.Name == nil {
+		return fmt.Errorf("no package name found")
+	}
+
+	g.Pkg = astFile.Name.Name
+	return nil
+}
+
+func getGOFile(dir string) (string, error) {
+	entries, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return "", err
+	}
+
+	for _, f := range entries {
+		if isGOFile(f.Name()) {
+			return fmt.Sprintf("%s/%s", dir, f.Name()), nil
+		}
+	}
+
+	return "", fmt.Errorf("no GO files found in directory %s", dir)
+}
+
+func isGOFile(f string) bool {
+	return filepath.Ext(f) == ".go"
 }

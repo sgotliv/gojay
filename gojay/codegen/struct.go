@@ -191,11 +191,16 @@ func (s *Struct) generateFieldDecoding(fields []*toolbox.FieldInfo) (string, []s
 						return "", nil, err
 					}
 				}
+			} else if field.IsMap {
+				templateKey = decodeMap
+				if err = s.generateObjectMap(field); err != nil {
+					return "", nil, err
+				}
 			} else if _, k, ok := s.typedFieldDecode(field, field.Type); ok {
 				templateKey = k
 			} else {
 				// templateKey = decodeUnknown
-				return "", nil, fmt.Errorf("Unknown type %s for field %s", field.Type, field.Name)
+				return "", nil, fmt.Errorf("unknown type %s for field %s", field.Type, field.Name)
 			}
 		}
 		if templateKey != -1 {
@@ -279,9 +284,11 @@ func (s *Struct) generateFieldEncoding(fields []*toolbox.FieldInfo) ([]string, e
 				templateKey = encodeStructSlice
 			} else if _, k, ok := s.typedFieldEncode(field, field.Type); ok {
 				templateKey = k
+			} else if field.IsMap {
+				templateKey = encodeMap
 			} else {
 				// templateKey = decodeUnknown
-				return nil, fmt.Errorf("Unknown type %s for field %s", field.Type, field.Name)
+				return nil, fmt.Errorf("unknown type %s for field %s", field.Type, field.Name)
 			}
 		}
 		if templateKey != -1 {

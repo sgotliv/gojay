@@ -2,8 +2,9 @@ package codegen
 
 import (
 	"fmt"
-	"github.com/viant/toolbox"
 	"strings"
+
+	"github.com/viant/toolbox"
 )
 
 //Field represents a field.
@@ -42,6 +43,7 @@ type Field struct {
 	IsAnonymous     bool
 	IsPointer       bool
 	IsSlice         bool
+	IsMap           bool
 
 	GojayMethod string
 }
@@ -65,6 +67,7 @@ func NewField(owner *Struct, field *toolbox.FieldInfo, fieldType *toolbox.TypeIn
 		Init:               fmt.Sprintf("%v{}", typeName),
 		TimeLayout:         "time.RFC3339",
 		IsSlice:            field.IsSlice,
+		IsMap:              field.IsMap,
 		PoolName:           getPoolName(field.TypeName),
 		Alias:              owner.Alias,
 		Reset:              "nil",
@@ -82,6 +85,10 @@ func NewField(owner *Struct, field *toolbox.FieldInfo, fieldType *toolbox.TypeIn
 		result.PoolName = getPoolName(field.ComponentType)
 	} else if fieldType != nil {
 		result.HelperType = getSliceHelperTypeName(fieldType.Name, field.IsPointerComponent)
+	}
+
+	if field.IsMap {
+		result.HelperType = getMapHelperTypeName(field.KeyTypeName, field.ValueTypeName)
 	}
 
 	if options := getTagOptions(field.Tag, "timeLayout"); len(options) > 0 {

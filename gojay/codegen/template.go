@@ -15,18 +15,16 @@ const (
 	encodeRawType
 	decodeStruct
 	encodeStruct
-
 	decodeStructSlice
 	encodeStructSlice
+	decodeMap
+	encodeMap
 	decodeTime
 	encodeTime
-
 	decodeSQLNull
 	encodeSQLNull
-
 	decodeUnknown
 	encodeUnknown
-
 	resetFieldValue
 	poolInstanceRelease
 	poolSliceInstanceRelease
@@ -91,6 +89,17 @@ var fieldTemplate = map[int]string{
 	encodeStructSlice: `    var {{.Var}}Slice = {{.HelperType}}({{.Accessor}})
     enc.ArrayKey{{.OmitEmpty}}("{{.Key}}", {{.DereferenceModifier}}{{.Var}}Slice)`,
 
+	decodeMap: `		case "{{.Key}}":
+			var aMap = {{.HelperType}}{}
+			err := dec.Object(&aMap)
+			if err == nil && len(aMap) > 0 {
+				{{.Mutator}} = {{.RawType}}(aMap)
+			}
+			return err
+	`,
+
+	encodeMap: `    enc.ObjectKey{{.OmitEmpty}}("{{.Key}}", {{.Accessor}})`,
+
 	decodeTime: `		case "{{.Key}}":
 			var format = {{.TimeLayout}}
 			var value = {{.Init}}
@@ -142,6 +151,7 @@ const (
 	embeddedStructInit
 	timeSlice
 	typeSlice
+	structTypeMap
 )
 
 var blockTemplate = map[int]string{
@@ -295,6 +305,34 @@ func ({{.Receiver}}) Reset()  {
 	embeddedStructInit: `if {{.Accessor}} == nil { 
 		{{.Accessor}} = {{.Init}}
 	}`,
+
+	structTypeMap: `
+type {{.HelperType}} {{.RawType}}
+
+func (s {{.HelperType}}) UnmarshalJSONObject(dec *gojay.Decoder, k string) error {
+	str := ""
+	err := dec.String(&str)
+	if err != nil {
+		return err
+	}
+	s[k] = str
+	return nil
+}
+
+func (s {{.HelperType}}) NKeys() int {
+	return 0
+}
+
+func (s {{.HelperType}}) MarshalJSONObject(enc *gojay.Encoder) {
+	for k, v := range s {
+		enc.StringKey(k, v)
+	}
+}
+
+func (s {{.HelperType}}) IsNil() bool {
+	return len(s) == 0
+}
+`,
 }
 
 func expandTemplate(namespace string, dictionary map[int]string, key int, data interface{}) (string, error) {

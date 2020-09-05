@@ -1,10 +1,12 @@
 package codegen
 
 import (
-	"github.com/viant/toolbox"
+	"fmt"
 	"reflect"
-	"strings"
 	"sort"
+	"strings"
+
+	"github.com/viant/toolbox"
 )
 
 func firstLetterToUppercase(text string) string {
@@ -52,6 +54,11 @@ func getSliceHelperTypeName(typeName string, isPointer bool) string {
 	return strings.Replace(pluralName, ".", "", -1)
 }
 
+func getMapHelperTypeName(keyTypeName, valueTypeName string) string {
+	return fmt.Sprintf("Map%s%s",
+		firstLetterToUppercase(keyTypeName), firstLetterToUppercase(valueTypeName))
+}
+
 func isSkipable(options *Options, field *toolbox.FieldInfo) bool {
 	if options := getTagOptions(field.Tag, options.TagName); len(options) > 0 {
 		for _, candidate := range options {
@@ -89,7 +96,7 @@ func normalizeTypeName(typeName string) string {
 	return strings.Replace(typeName, "*", "", strings.Count(typeName, "*"))
 }
 
-func sortedKeys(m map[string]string) ([]string) {
+func sortedKeys(m map[string]string) []string {
 	keys := make([]string, len(m))
 	i := 0
 	for k := range m {

@@ -1,11 +1,12 @@
 package codegen
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/viant/toolbox"
 	"log"
 	"path"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/viant/toolbox"
 )
 
 func TestGenerator_Generate(t *testing.T) {
@@ -45,7 +46,7 @@ func TestGenerator_Generate(t *testing.T) {
 			},
 		},
 		{
-			description: "struct with json annotation and time/foarmat|layouat generation",
+			description: "struct with json annotation and time/format|layout generation",
 			options: &Options{
 				Source:      path.Join(parent, "annotated_struct"),
 				Types:       []string{"Message"},
@@ -65,7 +66,6 @@ func TestGenerator_Generate(t *testing.T) {
 		}
 		if !assert.Nil(t, err, useCase.description) {
 			log.Fatal(err)
-			continue
 		}
 	}
 
