@@ -98,7 +98,8 @@ var fieldTemplate = map[int]string{
 			return err
 	`,
 
-	encodeMap: `    enc.ObjectKey{{.OmitEmpty}}("{{.Key}}", {{.Accessor}})`,
+	encodeMap: `    var {{.Var}}Map = {{.HelperType}}({{.Accessor}})
+	enc.ObjectKey{{.OmitEmpty}}("{{.Key}}", {{.DereferenceModifier}}{{.Var}}Map)`,
 
 	decodeTime: `		case "{{.Key}}":
 			var format = {{.TimeLayout}}
